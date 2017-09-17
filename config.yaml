@@ -1,0 +1,5 @@
+broker:
+    - name       : modalmais
+      url        : https://logado.modalmais.com.br/Home/Login
+      properties :
+           broker_url : https://homebroker.modalmais.com.br/hbnet2/hbweb2/defaultmobile.aspx?min=true

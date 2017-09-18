@@ -10,11 +10,18 @@ class ModalmaisAutomator(HomeBrokerAutomator):
     def __init__(self):
         super().__init__('modalmais')
 
+    def _select_order_tab(self, tab_id):
+        element = self.driver.find_element_by_id(tab_id)
+        if element.get_attribute('class') == 'or-menuitem-off aba-off':
+            element.click()
+
     def _select_stock(self, tab, stock):
         if tab == 'order':
-            self.driver.find_element_by_id('menuItemOrdemNormal-or1').click()
+            self._select_order_tab('menuItemOrdemNormal-or1')
         elif tab == 'stop':
-            self.driver.find_element_by_id('menuItemStop-or1').click()
+            self._select_order_tab('menuItemStop-or1')
+        elif tab == 'trailing_stop':
+            self._select_order_tab('menuItemStopMovel-or1')
         self._input_text_in_element_by_id('txtBoxPapel-or1', stock)\
             .send_keys(Keys.TAB)
         sleep(2)
@@ -49,6 +56,28 @@ class ModalmaisAutomator(HomeBrokerAutomator):
             alert_box_text, 'Disparo Gain', stop_gain_trigger)
         self._assert_price_in_alert_box(
             alert_box_text, 'Limite Gain', stop_gain_price)
+        self.driver.find_element_by_id('mb-button-yes').click()
+
+    def _confirm_trailing_stop_order(
+        self, stock, good_until, quantity,
+        stop_trigger, stop_price,
+        activation_price, adjusting_price
+    ):
+        alert_box_text = self.driver.find_element_by_id('MB_p').text
+        alert_box_text = alert_box_text.replace('.', '').replace(',', '.')
+        assert 'Enviar ordem de [VENDA]?' in alert_box_text
+        assert stock in alert_box_text
+        assert good_until.strftime('%d/%m/%Y') in alert_box_text
+        assert re.search(r'Quantidade: (\d+)', alert_box_text)\
+                 .group(1) == str(quantity)
+        self._assert_price_in_alert_box(
+            alert_box_text, 'Disparo', stop_trigger)
+        self._assert_price_in_alert_box(
+            alert_box_text, 'Limite', stop_price)
+        self._assert_price_in_alert_box(
+            alert_box_text, 'Início', activation_price)
+        self._assert_price_in_alert_box(
+            alert_box_text, 'Ajuste', adjusting_price)
         self.driver.find_element_by_id('mb-button-yes').click()
 
     def _confirm_buy_order(self, stock, max_price, max_price_total, quantity):
@@ -137,21 +166,21 @@ class ModalmaisAutomator(HomeBrokerAutomator):
         )
         print("Ordem concluída")
 
-    def send_stop_order(
+    def send_trailing_stop_order(
         self, stock, good_until, quantity,
-        stop_loss_trigger, stop_loss_price,
-        stop_gain_trigger, stop_gain_price
+        stop_trigger, stop_price,
+        activation_price, adjusting_price
     ):
-        print("Iniciando ordem de stop...")
-        self._select_stock('stop', stock)
+        print("Iniciando ordem de stop móvel...")
+        self._select_stock('trailing_stop', stock)
         self._input_text_in_element_by_id(
             'txtBoxValidade-or1', good_until.strftime('%d%m%Y'))
         self._input_text_in_element_by_id('txtBoxQtde-or1', str(quantity))
         prices_to_fill = [
-            ('txtBoxPrecoDispLoss-or1', stop_loss_trigger),
-            ('txtBoxPrecoLimLoss-or1', stop_loss_price),
-            ('txtBoxPrecoDispGain-or1', stop_gain_trigger),
-            ('txtBoxPrecoLimGain-or1', stop_gain_price)
+            ('txtBoxPrecoDisparo-or1', stop_trigger),
+            ('txtBoxPrecoLimite-or1', stop_price),
+            ('txtBoxInicio-or1', activation_price),
+            ('txtBoxAjuste-or1', adjusting_price)
         ]
         for element in prices_to_fill:
             self._input_formatted_price(element[0], element[1])
@@ -159,9 +188,10 @@ class ModalmaisAutomator(HomeBrokerAutomator):
             'txtBoxAssDigital-or1', self.signature)
         self.driver.find_element_by_id('btnVenda-or1').click()
         sleep(1)
-        self._confirm_stop_order(
+        self._confirm_trailing_stop_order(
             stock, good_until, quantity,
-            stop_loss_trigger, stop_loss_price,
-            stop_gain_trigger, stop_gain_price
+            stop_trigger, stop_price,
+            activation_price, adjusting_price
         )
+        sleep(5)
         print("Ordem concluída")

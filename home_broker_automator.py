@@ -56,5 +56,13 @@ class HomeBrokerAutomator(ABC):
     ):
         pass
 
+    @abstractmethod
+    def send_trailing_stop_order(
+        self, stock, good_until, quantity,
+        stop_trigger, stop_price,
+        activation_price, adjusting_price
+    ):
+        pass
+
     def quit(self):
         self.driver.quit()
